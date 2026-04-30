@@ -53,7 +53,8 @@ def load_model_once() -> Any:
 
         # ✅ FIXED PART (only change)
         if isinstance(artifact, dict):
-            model = artifact.get("model") or artifact.get("pipeline")
+            # take first value from dict (actual model inside)
+            model = list(artifact.values())[0]
         else:
             model = artifact
 
