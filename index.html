@@ -1,0 +1,1628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PropIQ — House Price Prediction</title>
+
+  <!-- Fonts: Cormorant Garamond (display) + DM Sans (body) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ============================================================
+       CSS VARIABLES & RESET
+    ============================================================ */
+    :root {
+      --bg-base:       #0d0d0f;
+      --bg-card:       #131316;
+      --bg-input:      #1a1a1f;
+      --bg-hover:      #1f1f26;
+      --border:        #2a2a35;
+      --border-focus:  #c9a84c;
+      --gold:          #c9a84c;
+      --gold-light:    #e2c47a;
+      --gold-dim:      rgba(201,168,76,0.15);
+      --text-primary:  #f0ece4;
+      --text-secondary:#9b9690;
+      --text-muted:    #55534e;
+      --error:         #e05c5c;
+      --success:       #5db88c;
+      --radius-sm:     6px;
+      --radius-md:     12px;
+      --radius-lg:     20px;
+      --shadow-card:   0 4px 40px rgba(0,0,0,0.6);
+      --transition:    0.22s cubic-bezier(0.4,0,0.2,1);
+      --font-display:  'Cormorant Garamond', serif;
+      --font-body:     'DM Sans', sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; font-size: 16px; }
+
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      font-weight: 400;
+      line-height: 1.6;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ============================================================
+       NOISE TEXTURE OVERLAY
+    ============================================================ */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 9999;
+      opacity: 0.4;
+    }
+
+    /* ============================================================
+       BACKGROUND GRADIENT ORBS
+    ============================================================ */
+    .bg-orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(120px);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .bg-orb-1 {
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(201,168,76,0.08) 0%, transparent 70%);
+      top: -200px; right: -150px;
+    }
+    .bg-orb-2 {
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(93,184,140,0.05) 0%, transparent 70%);
+      bottom: -100px; left: -100px;
+    }
+
+    /* ============================================================
+       LAYOUT
+    ============================================================ */
+    .page-wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* ============================================================
+       HEADER / NAV
+    ============================================================ */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      background: rgba(13,13,15,0.75);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+      text-decoration: none;
+    }
+    .logo-word {
+      font-family: var(--font-display);
+      font-size: 1.7rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: -0.01em;
+    }
+    .logo-iq {
+      color: var(--gold);
+    }
+    .logo-tag {
+      font-size: 0.68rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-left: 8px;
+      padding: 2px 7px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+    }
+
+    .nav-badge {
+      font-size: 0.72rem;
+      font-weight: 500;
+      color: var(--gold);
+      background: var(--gold-dim);
+      border: 1px solid rgba(201,168,76,0.3);
+      border-radius: 20px;
+      padding: 4px 12px;
+      letter-spacing: 0.04em;
+    }
+
+    /* ============================================================
+       HERO SECTION
+    ============================================================ */
+    .hero {
+      padding: 96px 0 72px;
+      text-align: center;
+      position: relative;
+    }
+
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--gold);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+      opacity: 0;
+      animation: fadeUp 0.7s 0.1s forwards;
+    }
+    .hero-eyebrow::before, .hero-eyebrow::after {
+      content: '';
+      display: block;
+      width: 32px;
+      height: 1px;
+      background: var(--gold);
+      opacity: 0.5;
+    }
+
+    .hero-title {
+      font-family: var(--font-display);
+      font-size: clamp(2.8rem, 6vw, 5rem);
+      font-weight: 300;
+      line-height: 1.08;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
+      margin-bottom: 24px;
+      opacity: 0;
+      animation: fadeUp 0.7s 0.2s forwards;
+    }
+    .hero-title em {
+      font-style: italic;
+      color: var(--gold-light);
+    }
+
+    .hero-subtitle {
+      font-size: 1.05rem;
+      font-weight: 300;
+      color: var(--text-secondary);
+      max-width: 560px;
+      margin: 0 auto 48px;
+      line-height: 1.7;
+      opacity: 0;
+      animation: fadeUp 0.7s 0.3s forwards;
+    }
+
+    .hero-stats {
+      display: flex;
+      justify-content: center;
+      gap: 48px;
+      opacity: 0;
+      animation: fadeUp 0.7s 0.4s forwards;
+    }
+    .stat-item { text-align: center; }
+    .stat-num {
+      font-family: var(--font-display);
+      font-size: 2rem;
+      font-weight: 600;
+      color: var(--gold);
+      display: block;
+    }
+    .stat-label {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    /* ============================================================
+       DIVIDER
+    ============================================================ */
+    .section-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border) 30%, var(--border) 70%, transparent);
+      margin: 0 0 64px;
+    }
+
+    /* ============================================================
+       FORM SECTION
+    ============================================================ */
+    .form-section { padding-bottom: 80px; }
+
+    .section-header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin-bottom: 40px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .section-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 8px;
+    }
+    .section-title {
+      font-family: var(--font-display);
+      font-size: 2rem;
+      font-weight: 400;
+      color: var(--text-primary);
+    }
+
+    /* Sample fill button */
+    .btn-sample {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      font-family: var(--font-body);
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--transition);
+      white-space: nowrap;
+    }
+    .btn-sample:hover {
+      border-color: var(--gold);
+      color: var(--gold);
+      background: var(--gold-dim);
+    }
+    .btn-sample svg { flex-shrink: 0; }
+
+    /* ---- FORM CARD ---- */
+    .form-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+      overflow: hidden;
+    }
+
+    /* ---- FORM GROUPS ---- */
+    .form-group-header {
+      padding: 24px 32px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .group-icon {
+      width: 32px; height: 32px;
+      background: var(--gold-dim);
+      border: 1px solid rgba(201,168,76,0.25);
+      border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .group-icon svg { color: var(--gold); }
+    .group-name {
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 20px;
+      padding: 28px 32px;
+    }
+    .form-grid.two-col {
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    }
+
+    /* ---- FIELD ---- */
+    .field { display: flex; flex-direction: column; gap: 6px; }
+
+    .field-label {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      letter-spacing: 0.04em;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .field-label .tooltip-wrap {
+      position: relative;
+      display: inline-flex;
+    }
+    .tooltip-icon {
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      background: var(--bg-hover);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 9px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: help;
+      flex-shrink: 0;
+    }
+    .tooltip-text {
+      display: none;
+      position: absolute;
+      bottom: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #222228;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 12px;
+      font-size: 0.72rem;
+      color: var(--text-secondary);
+      width: 190px;
+      line-height: 1.5;
+      z-index: 10;
+      pointer-events: none;
+      white-space: normal;
+    }
+    .tooltip-text::after {
+      content: '';
+      position: absolute;
+      top: 100%; left: 50%;
+      transform: translateX(-50%);
+      border: 5px solid transparent;
+      border-top-color: var(--border);
+    }
+    .tooltip-wrap:hover .tooltip-text { display: block; }
+
+    .field-input,
+    .field-select {
+      width: 100%;
+      padding: 11px 14px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      font-size: 0.88rem;
+      font-weight: 400;
+      transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+      -webkit-appearance: none;
+      appearance: none;
+      outline: none;
+    }
+    .field-input::placeholder { color: var(--text-muted); }
+    .field-input:focus,
+    .field-select:focus {
+      border-color: var(--border-focus);
+      background: var(--bg-hover);
+      box-shadow: 0 0 0 3px rgba(201,168,76,0.1);
+    }
+    .field-input.invalid,
+    .field-select.invalid {
+      border-color: var(--error);
+      box-shadow: 0 0 0 3px rgba(224,92,92,0.1);
+    }
+
+    /* Custom select arrow */
+    .select-wrapper {
+      position: relative;
+    }
+    .select-wrapper::after {
+      content: '';
+      position: absolute;
+      right: 14px; top: 50%;
+      transform: translateY(-50%);
+      width: 0; height: 0;
+      border-left: 4px solid transparent;
+      border-right: 4px solid transparent;
+      border-top: 5px solid var(--text-muted);
+      pointer-events: none;
+      transition: border-top-color var(--transition);
+    }
+    .select-wrapper:focus-within::after { border-top-color: var(--gold); }
+    .field-select { padding-right: 36px; cursor: pointer; }
+
+    .field-hint {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .field-error {
+      font-size: 0.7rem;
+      color: var(--error);
+      margin-top: 2px;
+      display: none;
+    }
+    .field-error.visible { display: block; }
+
+    /* ---- LOCATION SECTION ---- */
+    .location-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 10px;
+      padding: 28px 32px;
+    }
+
+    .loc-card {
+      padding: 10px 14px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all var(--transition);
+      text-align: center;
+      user-select: none;
+    }
+    .loc-card:hover {
+      border-color: rgba(201,168,76,0.4);
+      color: var(--text-primary);
+      background: var(--bg-hover);
+    }
+    .loc-card.selected {
+      background: var(--gold-dim);
+      border-color: var(--gold);
+      color: var(--gold-light);
+      font-weight: 600;
+    }
+    #location-error {
+      padding: 0 32px 20px;
+      font-size: 0.7rem;
+      color: var(--error);
+      display: none;
+    }
+    #location-error.visible { display: block; }
+
+    /* ---- SUBMIT AREA ---- */
+    .submit-area {
+      padding: 28px 32px 32px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .submit-info {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .submit-info strong { color: var(--text-secondary); }
+
+    .btn-predict {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 36px;
+      background: var(--gold);
+      border: none;
+      border-radius: var(--radius-sm);
+      color: #0d0d0f;
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      transition: all var(--transition);
+      position: relative;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    .btn-predict::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,0);
+      transition: background var(--transition);
+    }
+    .btn-predict:hover::before { background: rgba(255,255,255,0.1); }
+    .btn-predict:active { transform: scale(0.98); }
+    .btn-predict:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Spinner inside button */
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(13,13,15,0.3);
+      border-top-color: #0d0d0f;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+      flex-shrink: 0;
+    }
+    .btn-predict.loading .spinner { display: block; }
+    .btn-predict.loading .btn-icon { display: none; }
+
+    /* ============================================================
+       RESULT SECTION
+    ============================================================ */
+    #result-section {
+      margin-bottom: 80px;
+      display: none;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+    #result-section.visible {
+      display: block;
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .result-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+      overflow: hidden;
+      position: relative;
+    }
+    .result-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    }
+
+    .result-inner {
+      padding: 48px 40px;
+      text-align: center;
+    }
+    .result-eyebrow {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 16px;
+    }
+    .result-price {
+      font-family: var(--font-display);
+      font-size: clamp(3rem, 8vw, 5.5rem);
+      font-weight: 300;
+      color: var(--text-primary);
+      letter-spacing: -0.02em;
+      line-height: 1;
+      margin-bottom: 12px;
+    }
+    .result-price .currency {
+      font-size: 0.45em;
+      color: var(--gold);
+      vertical-align: top;
+      margin-top: 0.15em;
+      font-weight: 400;
+    }
+    .result-note {
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      margin-bottom: 36px;
+    }
+
+    .result-meta {
+      display: flex;
+      justify-content: center;
+      gap: 32px;
+      flex-wrap: wrap;
+      padding-top: 32px;
+      border-top: 1px solid var(--border);
+    }
+    .meta-item { text-align: center; }
+    .meta-val {
+      font-family: var(--font-display);
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      display: block;
+    }
+    .meta-key {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    /* Error state */
+    .result-error {
+      padding: 48px 40px;
+      text-align: center;
+    }
+    .error-icon {
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      background: rgba(224,92,92,0.12);
+      border: 1px solid rgba(224,92,92,0.3);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 20px;
+    }
+    .error-title {
+      font-family: var(--font-display);
+      font-size: 1.6rem;
+      font-weight: 400;
+      color: var(--error);
+      margin-bottom: 10px;
+    }
+    .error-msg {
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+      max-width: 440px;
+      margin: 0 auto;
+    }
+
+    /* ============================================================
+       FOOTER
+    ============================================================ */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 40px 0;
+    }
+    .footer-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .footer-logo {
+      font-family: var(--font-display);
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .footer-logo span { color: var(--gold); }
+    .footer-info {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-align: right;
+      line-height: 1.6;
+    }
+
+    /* ============================================================
+       CONFIG API URL BANNER
+    ============================================================ */
+    .api-config {
+      background: rgba(201,168,76,0.06);
+      border: 1px solid rgba(201,168,76,0.2);
+      border-radius: var(--radius-sm);
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 32px;
+      flex-wrap: wrap;
+    }
+    .api-config-label {
+      font-size: 0.72rem;
+      color: var(--gold);
+      font-weight: 600;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+    #api-url-input {
+      flex: 1;
+      min-width: 200px;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text-secondary);
+      font-family: 'Courier New', monospace;
+      font-size: 0.8rem;
+    }
+
+    /* ============================================================
+       ANIMATIONS
+    ============================================================ */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* ============================================================
+       RESPONSIVE
+    ============================================================ */
+    @media (max-width: 768px) {
+      .hero { padding: 64px 0 48px; }
+      .hero-stats { gap: 28px; }
+      .form-grid { grid-template-columns: 1fr 1fr; padding: 20px; }
+      .form-group-header { padding: 18px 20px 14px; }
+      .location-grid { padding: 20px; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+      .submit-area { padding: 20px; }
+      .result-inner { padding: 32px 24px; }
+      .result-meta { gap: 20px; }
+      .footer-info { text-align: left; }
+      #location-error { padding: 0 20px 16px; }
+    }
+
+    @media (max-width: 480px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .location-grid { grid-template-columns: repeat(3, 1fr); }
+      .submit-area { flex-direction: column; align-items: stretch; }
+      .btn-predict { justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Background orbs -->
+  <div class="bg-orb bg-orb-1"></div>
+  <div class="bg-orb bg-orb-2"></div>
+
+  <!-- ======================================================
+       HEADER
+  ====================================================== -->
+  <header>
+    <div class="nav-inner">
+      <a href="#" class="logo">
+        <span class="logo-word">Prop<span class="logo-iq">IQ</span></span>
+        <span class="logo-tag">ML</span>
+      </a>
+      <span class="nav-badge">Multiple Linear Regression</span>
+    </div>
+  </header>
+
+  <main>
+    <!-- ====================================================
+         HERO
+    ==================================================== -->
+    <section class="hero">
+      <div class="page-wrapper">
+        <div class="hero-eyebrow">Hyderabad Real Estate Intelligence</div>
+        <h1 class="hero-title">Predict <em>house prices</em><br>with machine learning</h1>
+        <p class="hero-subtitle">
+          Enter property details below and our trained regression model will estimate a market-aligned price based on 14 key features across Hyderabad's top localities.
+        </p>
+        <div class="hero-stats">
+          <div class="stat-item">
+            <span class="stat-num">14</span>
+            <span class="stat-label">Input Features</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-num">19</span>
+            <span class="stat-label">Localities</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-num">MLR</span>
+            <span class="stat-label">Algorithm</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="page-wrapper">
+
+      <div class="section-divider"></div>
+
+      <!-- ==================================================
+           FORM SECTION
+      ================================================== -->
+      <section class="form-section">
+        <div class="section-header">
+          <div>
+            <div class="section-label">Property Details</div>
+            <h2 class="section-title">Configure your property</h2>
+          </div>
+          <button class="btn-sample" id="sample-btn" type="button">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M3 8h10M8 3l5 5-5 5"/>
+            </svg>
+            Autofill Sample
+          </button>
+        </div>
+
+        <!-- API endpoint config -->
+        <div class="api-config">
+          <span class="api-config-label">API Endpoint</span>
+          <input type="text" id="api-url-input" value="http://127.0.0.1:5000/predict" spellcheck="false" />
+        </div>
+
+        <div class="form-card">
+
+          <!-- ---- GROUP 1: Size & Layout ---- -->
+          <div class="form-group-header">
+            <div class="group-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
+              </svg>
+            </div>
+            <span class="group-name">Size &amp; Layout</span>
+          </div>
+          <div class="form-grid">
+
+            <div class="field">
+              <label class="field-label" for="area_sqft">
+                Area (sq ft)
+                <span class="tooltip-wrap">
+                  <span class="tooltip-icon">?</span>
+                  <span class="tooltip-text">Total built-up area of the property in square feet.</span>
+                </span>
+              </label>
+              <input class="field-input" type="number" id="area_sqft" name="area_sqft"
+                     min="401" max="4999" placeholder="e.g. 1000" />
+              <span class="field-error" id="err-area_sqft">Enter a valid area (401-4999 sq ft)</span>
+            </div>
+
+            <div class="field">
+              <label class="field-label" for="bedrooms">
+                Bedrooms
+                <span class="tooltip-wrap">
+                  <span class="tooltip-icon">?</span>
+                  <span class="tooltip-text">Number of bedrooms (1–5).</span>
+                </span>
+              </label>
+              <input class="field-input" type="number" id="bedrooms" name="bedrooms"
+                     min="1" max="10" placeholder="e.g. 3" />
+              <span class="field-error" id="err-bedrooms">Enter 1–5 bedrooms</span>
+            </div>
+
+            <div class="field">
+              <label class="field-label" for="bathrooms">
+                Bathrooms
+                <span class="tooltip-wrap">
+                  <span class="tooltip-icon">?</span>
+                  <span class="tooltip-text">Number of bathrooms including attached.</span>
+                </span>
+              </label>
+              <input class="field-input" type="number" id="bathrooms" name="bathrooms"
+                     min="1" max="4" placeholder="e.g. 2" />
+              <span class="field-error" id="err-bathrooms">Enter 1–4 bathrooms</span>
+            </div>
+
+            <div class="field">
+              <label class="field-label" for="balcony_count">
+                Balconies
+                <span class="tooltip-wrap">
+                  <span class="tooltip-icon">?</span>
+                  <span class="tooltip-text">Total number of balconies in the unit.</span>
+                </span>
+              </label>
+              <input class="field-input" type="number" id="balcony_count" name="balcony_count"
+                     min="0" max="3" placeholder="e.g. 1" />
+              <span class="field-error" id="err-balcony_count">Enter 0–3 balconies</span>
+            </div>
+
+            <div class="field">
+              <label class="field-label" for="parking_spaces">
+                Parking Spaces
+                <span class="tooltip-wrap">
+                  <span class="tooltip-icon">?</span>
+                  <span class="tooltip-text">Number of covered or open parking spaces allotted.</span>
+                </span>
+              </label>
+              <input class="field-input" type="number" id="parking_spaces" name="parking_spaces"
+                     min="0" max="3" placeholder="e.g. 1" />
+              <span class="field-error" id="err-parking_spaces">Enter 0–3 parking spaces</span>
+            </div>
+
+            <div class="field">
+              <label class="field-label" for="floor_number">
+                Floor Number
+                <span class="tooltip-wrap">
+                  <span class="tooltip-icon">?</span>
+                  <span class="tooltip-text">The floor on which the unit is located. Ground = 0.</span>
+                </span>
+              </label>
+              <input class="field-input" type="number" id="floor_number" name="floor_number"
+                     min="0" max="25" placeholder="e.g. 5" />
+              <span class="field-error" id="err-floor_number">Enter floor 0–25</span>
+            </div>
+
+          </div>
+
+          <!-- ---- GROUP 2: Property Details ---- -->
+          <div class="form-group-header" style="border-top:1px solid var(--border);">
+            <div class="group-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+              </svg>
+            </div>
+            <span class="group-name">Property Attributes</span>
+          </div>
+          <div class="form-grid two-col">
+
+            <div class="field">
+              <label class="field-label" for="year_built">
+                Year Built
+                <span class="tooltip-wrap">
+                  <span class="tooltip-icon">?</span>
+                  <span class="tooltip-text">The year the building was constructed (2000–2022).</span>
+                </span>
+              </label>
+              <input class="field-input" type="number" id="year_built" name="year_built"
+                     min="2000" max="2022" placeholder="e.g. 2018" />
+              <span class="field-error" id="err-year_built">Enter a year between 2000 and 2022</span>
+            </div>
+
+            <div class="field">
+              <label class="field-label" for="distance_to_city">
+                Distance to City Center (km)
+                <span class="tooltip-wrap">
+                  <span class="tooltip-icon">?</span>
+                  <span class="tooltip-text">Approximate driving distance to Hyderabad's city centre in km.</span>
+                </span>
+              </label>
+              <input class="field-input" type="number" id="distance_to_city" name="distance_to_city"
+                     min="0.5" max="40" step="0.1" placeholder="e.g. 8.5" />
+              <span class="field-error" id="err-distance_to_city">Enter a valid distance (0.5-40 km)</span>
+            </div>
+
+            <div class="field">
+              <label class="field-label" for="property_type">Property Type</label>
+              <div class="select-wrapper">
+                <select class="field-select" id="property_type" name="property_type">
+                  <option value="">Select type</option>
+                  <option value="Apartment">Apartment</option>
+                  <option value="Villa">Villa</option>
+                  <option value="Independent House">Independent House</option>
+                </select>
+              </div>
+              <span class="field-error" id="err-property_type">Please select a property type</span>
+            </div>
+
+            <div class="field">
+              <label class="field-label" for="furnishing_status">Furnishing Status</label>
+              <div class="select-wrapper">
+                <select class="field-select" id="furnishing_status" name="furnishing_status">
+                  <option value="">Select status</option>
+                  <option value="Furnished">Furnished</option>
+                  <option value="Semi-Furnished">Semi-Furnished</option>
+                  <option value="Unfurnished">Unfurnished</option>
+                </select>
+              </div>
+              <span class="field-error" id="err-furnishing_status">Please select furnishing status</span>
+            </div>
+
+            <div class="field">
+              <label class="field-label" for="lift_availability">Lift Availability</label>
+              <div class="select-wrapper">
+                <select class="field-select" id="lift_availability" name="lift_availability">
+                  <option value="">Select</option>
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+              </div>
+              <span class="field-error" id="err-lift_availability">Please select lift availability</span>
+            </div>
+
+            <div class="field">
+              <label class="field-label" for="direction_facing">Direction Facing</label>
+              <div class="select-wrapper">
+                <select class="field-select" id="direction_facing" name="direction_facing">
+                  <option value="">Select direction</option>
+                  <option value="North">North</option>
+                  <option value="South">South</option>
+                  <option value="East">East</option>
+                  <option value="West">West</option>
+                  <option value="North-East">North-East</option>
+                  <option value="North-West">North-West</option>
+                  <option value="South-East">South-East</option>
+                  <option value="South-West">South-West</option>
+                </select>
+              </div>
+              <span class="field-error" id="err-direction_facing">Please select direction facing</span>
+            </div>
+
+          </div>
+
+          <!-- ---- GROUP 3: Location ---- -->
+          <div class="form-group-header" style="border-top:1px solid var(--border);">
+            <div class="group-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>
+              </svg>
+            </div>
+            <span class="group-name">Location — Hyderabad</span>
+          </div>
+          <div class="location-grid" id="location-grid">
+            <!-- Cards injected by JS -->
+          </div>
+          <span class="field-error" id="location-error">Please select a location</span>
+
+          <!-- ---- SUBMIT ---- -->
+          <div class="submit-area">
+            <div class="submit-info">
+              All fields are required. The model uses<br>
+              <strong>backend preprocessing</strong> for categorical and location features.
+            </div>
+            <button class="btn-predict" id="predict-btn" type="button">
+              <span class="spinner"></span>
+              <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" stroke-width="2">
+                <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+              </svg>
+              Predict Price
+            </button>
+          </div>
+
+        </div><!-- /form-card -->
+      </section>
+
+      <!-- ==================================================
+           RESULT SECTION
+      ================================================== -->
+      <section id="result-section">
+        <div class="section-header">
+          <div>
+            <div class="section-label">Model Output</div>
+            <h2 class="section-title">Prediction Result</h2>
+          </div>
+        </div>
+
+        <div class="result-card" id="result-card">
+          <!-- populated by JS -->
+        </div>
+      </section>
+
+    </div><!-- /page-wrapper -->
+  </main>
+
+  <!-- ======================================================
+       FOOTER
+  ====================================================== -->
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-logo">Prop<span>IQ</span></div>
+      <div class="footer-info">
+        Academic ML Project · Multiple Linear Regression<br>
+        Hyderabad House Price Prediction · Built with vanilla JS
+      </div>
+    </div>
+  </footer>
+
+  <!-- ======================================================
+       JAVASCRIPT
+  ====================================================== -->
+  <script>
+    /* ============================================================
+       CONFIG
+    ============================================================ */
+    const CONFIG = {
+      // API endpoint — users can change this in the UI banner
+      get apiUrl() { return document.getElementById('api-url-input').value.trim(); }
+    };
+
+    const DEFAULT_API_URL = 'http://127.0.0.1:5000/predict';
+
+     /* ============================================================
+       LOCATIONS
+     ============================================================ */
+    const LOCATIONS = [
+      'Banjara Hills', 'Gachibowli', 'HITEC City', 'Jubilee Hills',
+      'Kokapet', 'Kompally', 'Kondapur', 'Kukatpally', 'LB Nagar',
+      'Madhapur', 'Manikonda', 'Medchal', 'Mehdipatnam', 'Miyapur',
+      'Moinabad', 'Nallagandla', 'Narsingi', 'Secunderabad', 'Uppal'
+    ];
+
+    // Key used to store selected location
+    let selectedLocation = null;
+
+    /* ============================================================
+       BUILD LOCATION CARDS
+    ============================================================ */
+    function buildLocationGrid() {
+      const grid = document.getElementById('location-grid');
+      LOCATIONS.forEach(loc => {
+        const card = document.createElement('div');
+        card.className = 'loc-card';
+        card.textContent = loc;
+        card.dataset.loc = loc;
+        card.addEventListener('click', () => selectLocation(loc));
+        grid.appendChild(card);
+      });
+    }
+
+    function selectLocation(loc) {
+      selectedLocation = loc;
+      document.querySelectorAll('.loc-card').forEach(c => {
+        c.classList.toggle('selected', c.dataset.loc === loc);
+      });
+      document.getElementById('location-error').classList.remove('visible');
+    }
+
+    /* ============================================================
+       SAMPLE DATA AUTOFILL
+    ============================================================ */
+    // Helper to get random integer (inclusive)
+    function getRandom(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function setRange(inputId, min, max) {
+      const input = document.getElementById(inputId);
+      input.min = String(min);
+      input.max = String(max);
+      return input;
+    }
+
+    function applyAreaLogic(area) {
+      if (area <= 900) {
+        return {
+          sizeCategory: 'SMALL',
+          bedrooms: [1, 2],
+          bathrooms: [1, 2],
+          balcony_count: [0, 1],
+          parking_spaces: [0, 1],
+        };
+      }
+
+      if (area <= 1800) {
+        return {
+          sizeCategory: 'MEDIUM',
+          bedrooms: [2, 3],
+          bathrooms: [2, 3],
+          balcony_count: [1, 2],
+          parking_spaces: [1, 2],
+        };
+      }
+
+      if (area <= 3500) {
+        return {
+          sizeCategory: 'LARGE',
+          bedrooms: [3, 4],
+          bathrooms: [3, 4],
+          balcony_count: [2, 3],
+          parking_spaces: [2, 3],
+        };
+      }
+
+      return {
+        sizeCategory: 'LUXURY',
+        bedrooms: [4, 5],
+        bathrooms: [4, 5],
+        balcony_count: [3, 4],
+        parking_spaces: [3, 4],
+      };
+    }
+
+    // Helper to get random float with 1 decimal
+    function getRandomFloat(min, max) {
+      return Math.round((Math.random() * (max - min) + min) * 10) / 10;
+    }
+
+    function autofillSample() {
+      // Step 1: Generate realistic area.
+      const area = getRandom(400, 5000);
+      document.getElementById('area_sqft').value = area;
+
+      // Step 2 + 3: Determine size bucket and update dependent ranges.
+      const areaLogic = applyAreaLogic(area);
+      const bedroomInput = setRange('bedrooms', areaLogic.bedrooms[0], areaLogic.bedrooms[1]);
+      const bathroomInput = setRange('bathrooms', areaLogic.bathrooms[0], areaLogic.bathrooms[1]);
+      const balconyInput = setRange('balcony_count', areaLogic.balcony_count[0], areaLogic.balcony_count[1]);
+      const parkingInput = setRange('parking_spaces', areaLogic.parking_spaces[0], areaLogic.parking_spaces[1]);
+
+      // Step 4: Set dependent values from computed ranges.
+      bedroomInput.value = getRandom(areaLogic.bedrooms[0], areaLogic.bedrooms[1]);
+      bathroomInput.value = getRandom(areaLogic.bathrooms[0], areaLogic.bathrooms[1]);
+      balconyInput.value = getRandom(areaLogic.balcony_count[0], areaLogic.balcony_count[1]);
+      parkingInput.value = getRandom(areaLogic.parking_spaces[0], areaLogic.parking_spaces[1]);
+
+      // Fill shared numeric fields.
+      document.getElementById('year_built').value = getRandom(2000, 2022);
+      document.getElementById('distance_to_city').value = getRandomFloat(1, 30);
+
+      // Categorical fields
+      const propertyTypes = ['Apartment', 'Villa', 'Independent House'];
+      const selectedPropertyType = propertyTypes[getRandom(0, propertyTypes.length - 1)];
+      document.getElementById('property_type').value = selectedPropertyType;
+
+      // Step 5: Apply property-type floor logic.
+      const floorInput = document.getElementById('floor_number');
+      if (selectedPropertyType === 'Villa' || selectedPropertyType === 'Independent House') {
+        floorInput.value = 0;
+        floorInput.disabled = true;
+        floorInput.readOnly = true;
+      } else {
+        floorInput.disabled = false;
+        floorInput.readOnly = false;
+        setRange('floor_number', 0, 10);
+        floorInput.value = getRandom(0, 10);
+      }
+
+      const furnishingStatuses = ['Furnished', 'Semi-Furnished', 'Unfurnished'];
+      document.getElementById('furnishing_status').value = furnishingStatuses[getRandom(0, furnishingStatuses.length - 1)];
+
+      // Set lift availability based on property type
+      const liftInput = document.getElementById('lift_availability');
+      if (selectedPropertyType === 'Villa' || selectedPropertyType === 'Independent House') {
+        liftInput.value = 'No';
+      } else {
+        const liftOptions = ['Yes', 'No'];
+        liftInput.value = liftOptions[getRandom(0, liftOptions.length - 1)];
+      }
+
+      const directions = ['North', 'South', 'East', 'West', 'North-East', 'North-West', 'South-East', 'South-West'];
+      document.getElementById('direction_facing').value = directions[getRandom(0, directions.length - 1)];
+
+      // Location
+      const randomLoc = LOCATIONS[getRandom(0, LOCATIONS.length - 1)];
+      selectLocation(randomLoc);
+
+      // Step 6: Keep metadata about sample realism for debugging only.
+      console.log('[PropIQ] Autofill category:', areaLogic.sizeCategory);
+
+      // Clear validation errors
+      document.querySelectorAll('.field-error').forEach(e => e.classList.remove('visible'));
+      document.querySelectorAll('.field-input, .field-select').forEach(e => e.classList.remove('invalid'));
+    }
+
+    document.getElementById('sample-btn').addEventListener('click', autofillSample);
+
+    // Ensure floor and lift fields follow property-type rules when user changes the select
+    const propertyTypeEl = document.getElementById('property_type');
+    const floorEl = document.getElementById('floor_number');
+    const liftEl = document.getElementById('lift_availability');
+    function applyPropertyTypeRules() {
+      const pt = propertyTypeEl.value;
+      if (pt === 'Villa' || pt === 'Independent House') {
+        floorEl.value = 0;
+        floorEl.disabled = true;
+        floorEl.readOnly = true;
+        liftEl.value = 'No';
+      } else {
+        floorEl.disabled = false;
+        floorEl.readOnly = false;
+      }
+    }
+    propertyTypeEl.addEventListener('change', applyPropertyTypeRules);
+
+    /* ============================================================
+       FORM VALIDATION
+    ============================================================ */
+
+    /**
+     * Validate a single numeric field.
+     * @param {string} id - element id
+     * @param {number} min
+     * @param {number} max
+     * @returns {boolean}
+     */
+    function validateNumber(id, min, max) {
+      const el = document.getElementById(id);
+      const errEl = document.getElementById(`err-${id}`);
+      const val = parseFloat(el.value);
+      const valid = el.value !== '' && !isNaN(val) && val >= min && val <= max;
+      el.classList.toggle('invalid', !valid);
+      errEl.classList.toggle('visible', !valid);
+      return valid;
+    }
+
+    /**
+     * Validate a select field (non-empty).
+     * @param {string} id
+     * @returns {boolean}
+     */
+    function validateSelect(id) {
+      const el = document.getElementById(id);
+      const errEl = document.getElementById(`err-${id}`);
+      const valid = el.value !== '';
+      el.classList.toggle('invalid', !valid);
+      errEl.classList.toggle('visible', !valid);
+      return valid;
+    }
+
+    /**
+     * Run all validations and return overall validity.
+     * @returns {boolean}
+     */
+    function validateForm() {
+      const results = [
+        validateNumber('area_sqft', 100, 20000),
+        validateNumber('bedrooms', 1, 10),
+        validateNumber('bathrooms', 1, 10),
+        validateNumber('balcony_count', 0, 10),
+        validateNumber('parking_spaces', 0, 10),
+        validateNumber('floor_number', 0, 100),
+        validateNumber('year_built', 1950, 2025),
+        validateNumber('distance_to_city', 0, 100),
+        validateSelect('property_type'),
+        validateSelect('furnishing_status'),
+        validateSelect('lift_availability'),
+        validateSelect('direction_facing'),
+      ];
+
+      // Validate location
+      const locValid = selectedLocation !== null;
+      document.getElementById('location-error').classList.toggle('visible', !locValid);
+      results.push(locValid);
+
+      return results.every(Boolean);
+    }
+
+     /* ============================================================
+       BUILD PAYLOAD (exact model input columns)
+     ============================================================ */
+
+    /**
+     * Build the JSON payload for the API.
+     * Keys must match the trained pipeline input schema exactly.
+     * @returns {Object}
+     */
+    function buildPayload() {
+      const area_sqft = document.getElementById('area_sqft');
+      const bedrooms = document.getElementById('bedrooms');
+      const bathrooms = document.getElementById('bathrooms');
+      const year_built = document.getElementById('year_built');
+      const parking_spaces = document.getElementById('parking_spaces');
+      const floor_number = document.getElementById('floor_number');
+      const distance_to_city = document.getElementById('distance_to_city');
+      const balcony_count = document.getElementById('balcony_count');
+      const property_type = document.getElementById('property_type');
+      const furnishing_status = document.getElementById('furnishing_status');
+      const lift_availability = document.getElementById('lift_availability');
+      const direction_facing = document.getElementById('direction_facing');
+
+      return {
+        Area_sqft: parseFloat(area_sqft.value),
+        Bedrooms: parseInt(bedrooms.value),
+        Bathrooms: parseInt(bathrooms.value),
+        Year_Built: parseInt(year_built.value),
+        Parking_Spaces: parseInt(parking_spaces.value),
+        // enforce property-type rules: villas/independent houses are ground-level with no lift
+        Floor_Number: (property_type.value === 'Villa' || property_type.value === 'Independent House') ? 0 : parseInt(floor_number.value),
+        Distance_to_City_Center_km: parseFloat(distance_to_city.value),
+        Balcony_Count: parseInt(balcony_count.value),
+        Property_Type: property_type.value,
+        Furnishing_Status: furnishing_status.value,
+        Lift_Availability: (property_type.value === 'Villa' || property_type.value === 'Independent House') ? 'No' : lift_availability.value,
+        Direction_Facing: direction_facing.value,
+        Location: selectedLocation,
+      };
+    }
+
+    /* ============================================================
+       UI STATE HELPERS
+    ============================================================ */
+
+    function setLoadingState(loading) {
+      const btn = document.getElementById('predict-btn');
+      btn.disabled = loading;
+      btn.classList.toggle('loading', loading);
+    }
+
+    /**
+     * Format a number as Indian Rupee currency string.
+     * @param {number} amount
+     * @returns {string}
+     */
+    function formatINR(amount) {
+      return Number(amount).toLocaleString('en-IN');
+    }
+
+    /**
+     * Show the prediction result card.
+     * @param {number} price - predicted price in INR
+     */
+    function showResult(price) {
+      const section = document.getElementById('result-section');
+      const card    = document.getElementById('result-card');
+
+      const area      = document.getElementById('area_sqft').value;
+      const perSqft   = Math.round(price / parseFloat(area));
+      const location  = selectedLocation;
+      const propType  = document.getElementById('property_type').value;
+
+      card.innerHTML = `
+        <div class="result-inner">
+          <div class="result-eyebrow">Estimated Market Value</div>
+          <div class="result-price">
+            <span class="currency">₹</span>${formatINR(price)}
+          </div>
+          <div class="result-note">
+            Predicted by Multiple Linear Regression model · ${new Date().toLocaleTimeString()}
+          </div>
+          <div class="result-meta">
+            <div class="meta-item">
+              <span class="meta-val">₹${perSqft.toLocaleString('en-IN')}</span>
+              <span class="meta-key">per sq ft</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-val">${location}</span>
+              <span class="meta-key">Location</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-val">${propType}</span>
+              <span class="meta-key">Property Type</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-val">${document.getElementById('bedrooms').value} BHK</span>
+              <span class="meta-key">Configuration</span>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Trigger display + animation
+      section.style.display = 'block';
+      // Force reflow
+      void section.offsetWidth;
+      section.classList.add('visible');
+
+      // Scroll into view
+      setTimeout(() => section.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+    }
+
+    /**
+     * Show an error card in the result section.
+     * @param {string} message
+     */
+    function showError(message) {
+      const section = document.getElementById('result-section');
+      const card    = document.getElementById('result-card');
+
+      card.innerHTML = `
+        <div class="result-error">
+          <div class="error-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                 stroke="#e05c5c" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+          </div>
+          <div class="error-title">Prediction Failed</div>
+          <div class="error-msg">${message}</div>
+        </div>
+      `;
+
+      section.style.display = 'block';
+      void section.offsetWidth;
+      section.classList.add('visible');
+      setTimeout(() => section.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+    }
+
+    /* ============================================================
+       API CALL
+    ============================================================ */
+
+    /**
+     * Send prediction request to backend.
+     * @param {Object} payload
+     */
+    async function callPredictionAPI(payload) {
+      const apiUrl = CONFIG.apiUrl || DEFAULT_API_URL;
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        const apiError = data?.error ? ` - ${data.error}` : '';
+        throw new Error(`Server returned ${response.status}: ${response.statusText}${apiError}`);
+      }
+
+      console.log('[PropIQ] API Response:', data);
+
+      // Accept both { predicted_price: X } and { price: X } response shapes
+      const price = data.predicted_price ?? data.price ?? data.prediction ?? null;
+      if (price === null || isNaN(Number(price))) {
+        throw new Error('Unexpected response format from server. Could not parse predicted price.');
+      }
+
+      return Number(price);
+    }
+
+    /* ============================================================
+       PREDICT BUTTON HANDLER
+    ============================================================ */
+
+    document.getElementById('predict-btn').addEventListener('click', async () => {
+
+      // Reset previous result visibility
+      const resultSection = document.getElementById('result-section');
+      resultSection.classList.remove('visible');
+
+      // Validate
+      if (!validateForm()) {
+        // Scroll to first error
+        const firstErr = document.querySelector('.field-input.invalid, .field-select.invalid');
+        if (firstErr) firstErr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+
+      // Build payload
+      const payload = buildPayload();
+      console.log('[PropIQ] Sending payload:', payload);
+
+      // Start loading
+      setLoadingState(true);
+
+      try {
+        const predictedPrice = await callPredictionAPI(payload);
+        showResult(predictedPrice);
+      } catch (err) {
+        console.error('[PropIQ] API Error:', err);
+        showError(
+          `${err.message}<br><br>
+           <small>Make sure the backend server is running at <code>${CONFIG.apiUrl || DEFAULT_API_URL}</code></small>`
+        );
+      } finally {
+        setLoadingState(false);
+      }
+    });
+
+    /* ============================================================
+       INLINE VALIDATION ON BLUR (better UX)
+    ============================================================ */
+
+    // Numerical field blur validation map: id → [min, max]
+    const numericFields = {
+      area_sqft: [100, 20000],
+      bedrooms: [1, 10],
+      bathrooms: [1, 10],
+      balcony_count: [0, 10],
+      parking_spaces: [0, 10],
+      floor_number: [0, 100],
+      year_built: [1950, 2025],
+      distance_to_city: [0, 100],
+    };
+
+    Object.entries(numericFields).forEach(([id, [min, max]]) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener('blur', () => validateNumber(id, min, max));
+        el.addEventListener('input', () => {
+          if (el.classList.contains('invalid')) validateNumber(id, min, max);
+        });
+      }
+    });
+
+    const selectIds = ['property_type', 'furnishing_status', 'lift_availability', 'direction_facing'];
+    selectIds.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('change', () => validateSelect(id));
+    });
+
+    /* ============================================================
+       INIT
+    ============================================================ */
+    buildLocationGrid();
+  </script>
+
+</body>
+</html>
