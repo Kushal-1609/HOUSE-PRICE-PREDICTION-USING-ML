@@ -42,6 +42,11 @@ def load_model_once() -> Any:
         try:
             with COMBINED_MODEL_PATH.open("rb") as f:
                 artifact = pickle.load(f)
+                print(f"[DEBUG] artifact type: {type(artifact)}")
+                if isinstance(artifact, dict):
+                    print(f"[DEBUG] artifact keys: {list(artifact.keys())}")
+                else:
+                    print("[DEBUG] artifact is not a dict")
         except Exception as exc:
             MODEL_LOAD_ERROR = f"Failed to load {COMBINED_MODEL_PATH.name}: {exc}"
             raise RuntimeError(MODEL_LOAD_ERROR) from exc
