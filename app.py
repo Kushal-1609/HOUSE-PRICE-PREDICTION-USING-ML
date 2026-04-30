@@ -46,12 +46,16 @@ def load_model_once() -> Any:
             MODEL_LOAD_ERROR = f"Failed to load {COMBINED_MODEL_PATH.name}: {exc}"
             raise RuntimeError(MODEL_LOAD_ERROR) from exc
 
-        # artifact can be pipeline or dict with "model"
-        model = artifact.get("model") if isinstance(artifact, dict) else artifact
+        # ✅ FIXED PART (only change)
+        if isinstance(artifact, dict):
+            model = artifact.get("model") or artifact.get("pipeline")
+        else:
+            model = artifact
 
         if not hasattr(model, "predict"):
-            MODEL_LOAD_ERROR = "Loaded artifact does not expose predict()"
+            MODEL_LOAD_ERROR = f"Loaded object has no predict(): {type(model)}"
             raise RuntimeError(MODEL_LOAD_ERROR)
+        # ✅ END FIX
 
         MODEL = model
         print(f"[MODEL] Loaded combined artifact from {COMBINED_MODEL_PATH}")
